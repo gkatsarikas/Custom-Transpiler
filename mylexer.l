@@ -11,7 +11,7 @@ DIGIT [0-9]
 SIGN [+-]
 EXPONENT_TEN [eE]
 
-IDENTIFIER [a-zA-Z][A-Z0-9]*
+IDENTIFIER [a-zA-Z][_a-zA-Z0-9]*
 
 CONST_INT ({DIGIT}+)
 FLOATING_POINT_CONSTANT -?({DIGIT}+\.{DIGIT}+|{DIGIT}+(?:\.{DIGIT}*)?(?:{EXPONENT_TEN}{SIGN}?{DIGIT}+)?)
@@ -23,7 +23,8 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)"
 
 %%
 
-\n              ++line_num;
+\n              {++line_num;}
+[ \r\t]+           {/*Eat whitespace*/}
 
 
 "main"          {printf("token KEYWORD_MAIN: %s\n",yytext);};
@@ -86,9 +87,15 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)"
 "."             {printf("token DELIMITER_DOT: %s\n",yytext);};
 
 
-.               {printf("Unrecognized token %s in line %d",yytext,line_num); exit(EXIT_FAILURE);};
+{IDENTIFIER}    {printf("token IDENTIFIER: %s\n",yytext);};
 
+
+
+
+.               {printf("Unrecognized token %s in line %d",yytext,line_num); exit(EXIT_FAILURE);};
 %%
+
+
 
 
 int main(){

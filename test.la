@@ -1,10 +1,18 @@
+a, b: integer;
+
+def cube(i: integer)-> integer:
+    return i*i*i;
+enddef;
+
+def add(n: integer, k: integer)-> integer:
+    j: integer;
+    j = (N-n) + cube(k);
+    writeInteger(j);
+    return j;
+enddef;
+
 def main():
-    a,b,c: integer;
-
-    a = 1;
-    b = 2;
-
-    c = a+b;
-
-
+    a = readInteger();
+    b = readInteger();
+    add(a, b); 
 enddef;
