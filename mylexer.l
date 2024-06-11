@@ -16,7 +16,7 @@ IDENTIFIER [a-zA-Z][_a-zA-Z0-9]*
 CONST_INT ({DIGIT}+)
 FLOATING_POINT_CONSTANT -?({DIGIT}+\.{DIGIT}+|{DIGIT}+(?:\.{DIGIT}*)?(?:{EXPONENT_TEN}{SIGN}?{DIGIT}+)?)
 BOOLEAN_CONSTANT True|False
-CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)"
+CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 
 %x              line_comment
 
@@ -24,7 +24,7 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)"
 %%
 
 \n              {++line_num;}
-[ \r\t]+           {/*Eat whitespace*/}
+[ \r\t]+        {/*Eat whitespace*/}
 
 
 "main"          {printf("token KEYWORD_MAIN: %s\n",yytext);};
@@ -88,8 +88,14 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)"
 
 
 {IDENTIFIER}    {printf("token IDENTIFIER: %s\n",yytext);};
+{CONST_INT}     {printf("token CONST_INT: %s\n",yytext);};
+{FLOATING_POINT_CONSTANT}   {printf("token FLOATING_POINT_CONST: %s\n",yytext);};
+{CONSTANT_STRINGS} {printf("token CONSTANT_STRING: %s\n", yytext);}
 
 
+"--"                    {BEGIN(line_comment);};
+<line_comment>[^\n]*    /*Eat line comments*/
+<line_comment>\n        {++line_num;BEGIN(0);}
 
 
 .               {printf("Unrecognized token %s in line %d",yytext,line_num); exit(EXIT_FAILURE);};
