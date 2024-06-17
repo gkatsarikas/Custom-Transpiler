@@ -60,12 +60,13 @@
         macros_list = NULL;
     }
 
+
 %}
 
 DIGIT [0-9]
 EXPONENT_TEN [eE]
 
-IDENTIFIER [a-zA-Z][a-zA-Z0-9_]*
+IDENTIFIER [a-zA-Z][a-zA-Z0-9]*
 CONST_INT ({DIGIT}+)
 FLOATING_POINT_CONSTANT ({DIGIT}+\.[0-9]+|{DIGIT}+\.?|{DIGIT}+(?:\.{DIGIT}*)?(?:{EXPONENT_TEN}[+-]?{DIGIT}+)?) 
 BOOLEAN_CONSTANT True|False
@@ -114,12 +115,12 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 "%"             {printf("token MODULO_OPERATOR: %s\n",yytext); operator_flag=1; return MODULO_OPERATOR;};
 "**"            {printf("token POWER_OPERATOR: %s\n",yytext); operator_flag=1; return POWER_OPERATOR;};
 
-"=="            {printf("token IS_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1;};
-"!="            {printf("token IS_NOT_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1;};
-"<"             {printf("token LESS_THAN_OPERATOR: %s\n",yytext); operator_flag=1;};
-"<="            {printf("token LESS_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1;};
-">"             {printf("token GREATER_THAN_OPERATOR: %s\n",yytext); operator_flag=1;};
-">="            {printf("token GREATER_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1;};
+"=="            {printf("token IS_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1; return IS_EQUAL_OPERATOR;};
+"!="            {printf("token IS_NOT_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1;return IS_NOT_EQUAL_OPERATOR;};
+"<"             {printf("token LESS_THAN_OPERATOR: %s\n",yytext); operator_flag=1; return LESS_THAN_OPERATOR;};
+"<="            {printf("token LESS_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1; return LESS_EQUAL_OPERATOR;};
+">"             {printf("token GREATER_THAN_OPERATOR: %s\n",yytext); operator_flag=1; return GREATER_THAN_OPERATOR;};
+">="            {printf("token GREATER_EQUAL_OPERATOR: %s\n",yytext); operator_flag=1; return GREATER_EQUAL_OPERATOR;};
 
 "="             {printf("token ASSIGN_OPERATOR: %s\n",yytext); operator_flag=1; return ASSIGN_OPERATOR;};
 "#"             {printf("token HASHTAG_ASSIGN_OPERATOR: %s\n",yytext); operator_flag=1; return HASHTAG_ASSIGN_OPERATOR;};
@@ -156,6 +157,5 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 <line_comment>[^\n]*    /*Eat line comments*/
 <line_comment>\n        {++line_num;BEGIN(INITIAL);}
 
-<<EOF>>                 return EOF;
 .                       {printf("Unrecognized token %s in line %d",yytext,line_num); exit(EXIT_FAILURE);};
 %%

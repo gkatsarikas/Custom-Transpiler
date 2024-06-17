@@ -5,28 +5,20 @@ comp Circle:
     #radius: scalar ;
 endcomp;
 
+const N = 100: integer;
+b: integer;
+a[100]: integer;
 
-i, j: scalar ;
-s1, s2: str;
-n1: integer ;
-s, ss: str ;
-test: bool ;
-grades[5]: scalar ;
-directions[4]: str ;
 
-def func(a: integer)->integer:
-    break;
-enddef;
-
-def func_b(b: integer)->str:
-    break;
+def cube(i: integer )-> integer:
+    return i*i*i;
 enddef;
 
 def main():
-    return;
+    cube(2);
+    for b in [0:100]:
+        b = 6;
+    endfor;
+
+    return 0;
 enddef;
-
-
-
-
-
