@@ -1,22 +1,18 @@
-a, b: integer;
-
-
-def cube(i: integer)-> integer:
-    return i*i*i;
-enddef;
 --This is a comment
-def add(n: integer, k: integer)-> integer:
-    j: integer;
-    j = (N-n) + cube(k);
-    writeInteger(j);
-    return j;
-enddef;
+
+i, j: scalar ;
+s1, s2: str;
+n1: integer ;
+s, ss: str ;
+test: bool ;
+grades[5]: scalar ;
+directions[4]: str ;
 
 def main():
-    c = 1;
-    d = 2.2;
-    f = "hi";
-    a = readInteger();
-    b = readInteger();
-    add(a, b); 
+    return;
 enddef;
+
+
+
+
+
