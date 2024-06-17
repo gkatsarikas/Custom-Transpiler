@@ -117,9 +117,22 @@
 %type <str> variable_list
 
 
+
+%type <str> function_definition
+%type <str> function_parameters
+%type <str> function_body
+
+
+
+%type <str> complex_type_structure
+%type <str> member_variables
+%type <str> member_variable_declaration
+%type <str> member_variable_list
+
 %type <str> statements
 %type <str> return_statement
 %type <str> empty_statement
+%type <str> break_statement
 
 %%
 program: program_template
@@ -169,8 +182,8 @@ program_template:
     ;
 
 main_function:
-    KEYWORD_MAIN DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements KEYWORD_ENDDEF DELIMITER_SEMICOLON
-    {$$=template("int main(){\n%s}",$5);}
+    KEYWORD_DEF KEYWORD_MAIN DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements KEYWORD_ENDDEF DELIMITER_SEMICOLON
+    {$$=template("int main(){\n\t%s\n};",$6);}
     ;
 
 
@@ -212,7 +225,7 @@ var_declarations:
     ;
 
 variable_declaration:
-    variable_list DELIMITER_COLON data_type {$$ = template("%s : %s", $1, $3);}
+    variable_list DELIMITER_COLON data_type {$$ = template("%s %s", $3, $1);}
     | IDENTIFIER DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s %s[%d]",$6,$1,$3);}
 ;
 
@@ -231,18 +244,80 @@ constant_declaration:
     KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR INTEGER_CONSTANT DELIMITER_COLON KEYWORD_INTEGER {$$=template("const int %s = %s;",$2,$4);}
     | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR FLOATING_POINT_CONSTANT DELIMITER_COLON KEYWORD_SCALAR {$$=template("const double %s = %s;",$2,$4);}
     | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR STRING_CONSTANT DELIMITER_COLON KEYWORD_STR {$$=template("const char* %s = %s;",$2,$4);}
-    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR BOOLEAN_CONSTANT DELIMITER_COLON KEYWORD_BOOL {$$=template("const int %s = %d;",$2,$4);}
+    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR BOOLEAN_CONSTANT DELIMITER_COLON KEYWORD_BOOL {$$=template("const int %s = %s;",$2,$4);}
     ;
 
 
-/*5. Functions*/
+/*5. Functions
+Function structure in Lambda
+
+def func_name(function parameters)->return type:
+    function body (variables and constant declaration is optional but statements are mandatory)
+    return expression; (also optional)
+enddef;
+
+*/
 func_definitions:
+    function_definition {$$=template("%s",$1);}
+    | func_definitions function_definition {$$=template("%s %s",$1,$2);}
     ;
 
+function_definition:
+    KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
+    function_body 
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
+    | KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
+    function_body KEYWORD_RETURN DELIMITER_SEMICOLON
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
+    ;
 
-/*6. Complex structures*/
+function_parameters:
+    /*empty*/ {$$=template("");}
+    | variable_declaration {$$=template("%s",$1);}
+    | function_parameters DELIMITER_COMMA variable_declaration {$$=template("%s, %s",$1,$3);}
+    ;
+
+function_body:
+    variable_declaration constant_declaration statements {$$=template("\t%s\n%s\n%s\n",$1,$2,$3);}
+    | variable_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
+    | constant_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
+    | statements {$$=template("\t%s\n",$1);}
+    ;
+
+/*6. Complex structures
+
+comp comp_name:
+    variables declaration (member variables, they begin with #)
+    functions (methods)
+endcomp;
+*/
 complex_types_declarations:
+    complex_type_structure {$$=template("%s",$1);}
+    | complex_types_declarations complex_type_structure {$$=template("%s\n%s",$1,$2);}
     ;
+
+
+complex_type_structure:
+    KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables func_definitions KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n%s}%s;",$2,$4,$5,$2);}
+    | KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n}%s;",$2,$4,$2);}
+    ;
+
+/*Similar to variables but they must begin with HASH (#)*/
+member_variables:
+    member_variable_declaration {$$=template("%s",$1);}
+    | member_variables member_variable_declaration {$$=template("%s\n%s",$1,$2);}
+    ;
+
+member_variable_declaration:
+    member_variable_list DELIMITER_COLON data_type DELIMITER_SEMICOLON{$$=template("%s %s",$3,$1);}
+    ;
+
+member_variable_list:
+    member_variable_list DELIMITER_COMMA HASHTAG_ASSIGN_OPERATOR IDENTIFIER {$$ = template("%s, %s", $1, $4);}
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER{$$ = template("%s",$2);}
+    ;
+
+
 
 
 /*7. Expressions*/
@@ -252,22 +327,25 @@ complex_types_declarations:
 statements:
     return_statement {$$=template("%s",$1);}
     |empty_statement {$$=template("%s",$1);}
+    | break_statement {$$=template("%s",$1);}
     ;
 
 return_statement:
     KEYWORD_RETURN DELIMITER_SEMICOLON {$$=template("return;");}
     ;
 
+break_statement:
+    KEYWORD_BREAK DELIMITER_SEMICOLON {$$=template("break;");}
+    ;
+
 empty_statement:
     {$$=template("");}
-    | DELIMITER_SEMICOLON
     ;
 
 %%
-int main(){
-    if(yyparse == 0)
-        printf("Rejected\n");
+int main() {
+    if ( yyparse() == 0 )
+    printf("Accepted!\n");
     else
-        printf("Your program is syntactically correct!\n");
-    return 0;
+    printf("Rejected!\n");
 }

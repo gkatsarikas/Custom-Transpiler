@@ -1,5 +1,11 @@
 --This is a comment
 
+comp Circle:
+    #x, #y: scalar ;
+    #radius: scalar ;
+endcomp;
+
+
 i, j: scalar ;
 s1, s2: str;
 n1: integer ;
@@ -7,6 +13,14 @@ s, ss: str ;
 test: bool ;
 grades[5]: scalar ;
 directions[4]: str ;
+
+def func(a: integer)->integer:
+    break;
+enddef;
+
+def func_b(b: integer)->str:
+    break;
+enddef;
 
 def main():
     return;

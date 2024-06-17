@@ -3,3 +3,9 @@ This repository contains an implementation of a source to source compiler for th
 
 -Lexical analyzer, which is implemented using flex
 -Syntax analyzer, which is implemented using bison
+
+
+The program can be executed by simply typing the following commands:
+
+make
+./mycompiler < test.la
