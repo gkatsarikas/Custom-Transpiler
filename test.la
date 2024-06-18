@@ -19,6 +19,6 @@ def main():
     for b in [0:100]:
         b = 6;
     endfor;
-
+    b = 11;
     return 0;
 enddef;
