@@ -1,17 +1,15 @@
 --This is a comment
 
-comp Circle:
-    #x, #y: scalar ;
-    #radius: scalar ;
-endcomp;
 
 const N = 100: integer;
+l,c: integer;
 b: integer;
 a[100]: integer;
-
+c: scalar;
+alpha: bool;
 
 def cube(i: integer )-> integer:
-    return i*i*i;
+    return;
 enddef;
 
 def main():
@@ -20,5 +18,12 @@ def main():
         b = 6;
     endfor;
     b = 11;
-    return 0;
+    b += 23;
+    c = 2.2 + (0.21*4);
+    readInteger(b);
+    a := [i for i:100]:integer;
+
+    alpha = True;
+
+    return;
 enddef;
