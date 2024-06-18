@@ -10,63 +10,12 @@
 
     int line_num = 1;
     int operator_flag = 1;  /*Flag used to find whether the + and - operators are sign or addition/subtraction operators*/    
-
-
-    /*For macros handling, we are going to implement a linked list*/
-
-    typedef struct macro{
-        char* name;
-        char* value;
-        struct macro *next;
-    }macro;
-
-    macro* macros_list = NULL;
-
-    /*Addition and search operations*/
-
-    void add_macro_to_list(char* name,char* value){
-        macro* m = (macro*)malloc(sizeof(macro));
-
-        m->name = name;
-        m->value = value;
-        m->next = macros_list;
-
-        macros_list = m;
-    }
-
-    char* search_macro(char* name){
-        macro* m = macros_list; 
-        while(macros_list){
-            if(strcmp(macros_list->name,name) == 0){
-                return macros_list->value;
-            }
-            m = m->next;
-        }
-
-        return NULL;
-    }
-
-    /*Frees allocated memory*/
-    void free_macro(){
-        macro* m = macros_list;
-
-        while(m){
-            macro* next = m->next;
-            free(m->name);
-            free(m->value);
-            free(m);
-            m = next;
-        }
-        macros_list = NULL;
-    }
-
-
 %}
 
 DIGIT [0-9]
 EXPONENT_TEN [eE]
 
-IDENTIFIER [a-zA-Z][a-zA-Z0-9]*
+IDENTIFIER [a-zA-Z][a-zA-Z0-9_]*
 CONST_INT ({DIGIT}+)
 FLOATING_POINT_CONSTANT ({DIGIT}+\.[0-9]+|{DIGIT}+\.?|{DIGIT}+(?:\.{DIGIT}*)?(?:{EXPONENT_TEN}[+-]?{DIGIT}+)?) 
 BOOLEAN_CONSTANT True|False
@@ -82,7 +31,7 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 
 
 
-"main"          {printf("token KEYWORD_MAIN: %s\n",yytext); operator_flag=0; return KEYWORD_MAIN;};
+"main"          {printf("token KEYWORD_MAIN: %s\n",yytext);  operator_flag=0; return KEYWORD_MAIN;};
 "integer"       {printf("token KEYWORD_INTEGER: %s\n",yytext); operator_flag=0; return KEYWORD_INTEGER;};
 "scalar"        {printf("token KEYWORD_SCALAR: %s\n",yytext); operator_flag=0; return KEYWORD_SCALAR;};
 "str"           {printf("token KEYWORD_STR: %s\n",yytext); operator_flag=0; return KEYWORD_STR;};
@@ -145,10 +94,10 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 
 "->"            {printf("token ARROW_OPERATOR: %s\n",yytext); operator_flag=1; return ARROW_OPERATOR;}
 
-{IDENTIFIER}    {printf("token IDENTIFIER: %s\n", yytext); operator_flag = 0; return IDENTIFIER;}
-{CONST_INT}     {printf("token INTEGER_CONSTANT: %s\n",yytext); operator_flag = 0; return INTEGER_CONSTANT;};
-{FLOATING_POINT_CONSTANT}   {printf("token SCALAR_CONSTANT: %s\n",yytext); operator_flag=0; return FLOATING_POINT_CONSTANT;};
-{CONSTANT_STRINGS} {printf("token STRING_CONSTANT: %s\n", yytext); operator_flag=0; return STRING_CONSTANT;}
+{IDENTIFIER}    {yylval.str=strdup(yytext); printf("token IDENTIFIER: %s\n", yytext); operator_flag = 0; return IDENTIFIER;}
+{CONST_INT}     {yylval.str=strdup(yytext); printf("token INTEGER_CONSTANT: %s\n",yytext); operator_flag = 0; return INTEGER_CONSTANT;};
+{FLOATING_POINT_CONSTANT}   {yylval.str=strdup(yytext); printf("token SCALAR_CONSTANT: %s\n",yytext); operator_flag=0; return FLOATING_POINT_CONSTANT;};
+{CONSTANT_STRINGS} {yylval.str=strdup(yytext); printf("token STRING_CONSTANT: %s\n", yytext); operator_flag=0; return STRING_CONSTANT;}
 
 
 

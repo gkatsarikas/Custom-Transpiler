@@ -5,7 +5,7 @@
     #include <math.h>
     #include "cgen.h"
 
-    int yylex(void);
+    extern int yylex();
 
     /*Flag to determine whether a variable is from a comp*/
     int is_comp_flag = 0;
@@ -14,13 +14,11 @@
 
 %union{
     char *str;
-    int int_val;
-    double double_val;
 }
 
 %token <str> IDENTIFIER
-%token <int_val> INTEGER_CONSTANT 
-%token <double_val> FLOATING_POINT_CONSTANT 
+%token <str> INTEGER_CONSTANT 
+%token <str> FLOATING_POINT_CONSTANT 
 %token <str> STRING_CONSTANT 
 %token <str> BOOLEAN_CONSTANT
 
@@ -61,14 +59,12 @@
 %token MODULO_ASSIGN_OPERATOR
 %token ARRAY_ASSIGN_OPERATOR
 %token ARROW_OPERATOR
-
 %token IS_EQUAL_OPERATOR
 %token IS_NOT_EQUAL_OPERATOR
 %token LESS_THAN_OPERATOR
 %token LESS_EQUAL_OPERATOR
 %token GREATER_THAN_OPERATOR
 %token GREATER_EQUAL_OPERATOR
-
 %token DELIMITER_DOT
 %token DELIMITER_COLON
 %token DELIMITER_SEMICOLON
@@ -92,34 +88,22 @@
 %type <str> program
 %type <str> program_template
 
+%type <str> identifiers
 
 %type <str> complex_types_declarations
 %type <str> const_declarations
 %type <str> var_declarations
 %type <str> func_definitions
 %type <str> main_function
-
-
-
 %type <str> data_type
 %type <str> basic_type
 %type <str> complex_type
 %type <str> array_type
-
-
 %type <str> constant_declaration
-
-
 %type <str> variable_declaration
-%type <str> variable_list
-
-
-
 %type <str> function_definition
 %type <str> function_parameters
-
-
-
+%type <str> function_body
 %type <str> complex_type_structure
 %type <str> member_variables
 %type <str> member_variable_declaration
@@ -146,20 +130,18 @@
 %type <str> function_call_statement
 %type <str> function_arguments
 
-%type <str> const_declarations_opt
-%type <str> var_declarations_opt
-%type <str> function_body
-
 %start program
 
 %%
 program: program_template
     {
-    $$ = template("%s",$1);
     FILE* outputFile = fopen("output.c", "w");
         if (yyerror_count == 0) {
             // Print the contents of c_prologue to the file
             fputs(c_prologue, outputFile);
+            fputs("#include <stdio.h>\n",outputFile);
+            fputs("#include <stdlib.h>\n",outputFile);
+            fputs("#include <math.h>\n",outputFile);
 
             // Print the value of $1 to the file
             fprintf(outputFile, "%s", $1);
@@ -167,14 +149,11 @@ program: program_template
             // Print the error message and yyerror_count to the file
             fprintf(outputFile, "Error num: %d", yyerror_count);
         }
-
         // Close the output file
         fclose(outputFile);
     }
     ;
-
 /*1. Program structure
-
 Complex types declarations
 constants declarations
 variables declarations
@@ -201,19 +180,18 @@ program_template:
     ;
 
 main_function: 
-    KEYWORD_DEF KEYWORD_MAIN DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements KEYWORD_ENDDEF DELIMITER_SEMICOLON
+    KEYWORD_DEF KEYWORD_MAIN DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON function_body KEYWORD_ENDDEF DELIMITER_SEMICOLON
     {$$=template("int main(){\n\t%s\n}",$6);}
     ;
 
-/* Optional variable and constant declarations */
-
+identifiers:
+    IDENTIFIER {$$=template("%s",$1);}
+    | identifiers DELIMITER_COMMA IDENTIFIER {$$=template("%s,%s",$1,$3);}
 
 /*2. Data types
-
 Basic types: integer,scalar,str,bool
 Complex types: All types that occur from a comp 
 Array types: Arrays with elements of a basic type
-
 Note: Booleans are treated as integers (True is mapped to 0 and False is mapped to 1)
 */
 data_type:
@@ -221,41 +199,29 @@ data_type:
     | complex_type {$$=template("%s",$1);}
     | array_type {$$=template("%s",$1);}
     ;
-
 basic_type:
     KEYWORD_INTEGER {$$=template("int");}
     | KEYWORD_SCALAR {$$=template("double");}
     | KEYWORD_STR {$$=template("char*");}
     | KEYWORD_BOOL {$$=template("int");}
     ;
-
 complex_type:
     KEYWORD_COMP IDENTIFIER {$$=template("struct %s",$2);}
     ;
-
 array_type:
-    DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[%d]",$5,$2);}
-    | DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[]",$4);}
+DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[%d]",$5,$2);}
+| DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[]",$4);}
 ;
-
-
 /*3. Variables*/
 var_declarations:
     var_declarations variable_declaration DELIMITER_SEMICOLON {$$= template("%s\n%s;", $1, $2);}
     | variable_declaration DELIMITER_SEMICOLON {$$ = template("%s;", $1);}
     ;
-
 variable_declaration:
-    variable_list DELIMITER_COLON data_type {$$ = template("%s %s", $3, $1);}
-    | IDENTIFIER DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET {$$ = template("%s[%d]", $1, $3);}
-    | IDENTIFIER DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET {$$ = template("%s[]", $1);}
+    identifiers DELIMITER_COLON data_type {$$ = template("%s %s", $3, $1);}
     | IDENTIFIER DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s %s[%d]",$6,$1,$3);}
 ;
 
-variable_list:
-    variable_list DELIMITER_COMMA IDENTIFIER {$$ = template("%s, %s", $1, $3);}
-    | IDENTIFIER{$$ = template("%s",$1);}
-    ;
 
 
 /*4. Constants*/
@@ -263,58 +229,43 @@ const_declarations:
     const_declarations constant_declaration DELIMITER_SEMICOLON {$$=template("%s\n%s",$1,$2);}
     | constant_declaration DELIMITER_SEMICOLON {$$ = template("%s",$1);}
     ;
-
 constant_declaration:
-    KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR INTEGER_CONSTANT DELIMITER_COLON KEYWORD_INTEGER {$$=template("const int %s = %d;",$2,$4);}
-    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR FLOATING_POINT_CONSTANT DELIMITER_COLON KEYWORD_SCALAR {$$=template("const double %s = %lf;",$2,$4);}
+    KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR INTEGER_CONSTANT DELIMITER_COLON KEYWORD_INTEGER {$$=template("const int %s = %s;",$2,$4);}
+    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR FLOATING_POINT_CONSTANT DELIMITER_COLON KEYWORD_SCALAR {$$=template("const double %s = %s;",$2,$4);}
     | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR STRING_CONSTANT DELIMITER_COLON KEYWORD_STR {$$=template("const char* %s = %s;",$2,$4);}
-    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR BOOLEAN_CONSTANT DELIMITER_COLON KEYWORD_BOOL {$$=template("const int %s = %d;",$2,$4);}
+    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR BOOLEAN_CONSTANT DELIMITER_COLON KEYWORD_BOOL {$$=template("const int %s = %s;",$2,$4);}
     ;
-
-
 /*5. Functions
 Function structure in Lambda
-
 def func_name(function parameters)->return type:
     function body (variables and constant declaration is optional but statements are mandatory)
     return expression; (also optional)
 enddef;
-
 */
 func_definitions:
     function_definition {$$=template("%s",$1);}
     | func_definitions function_definition {$$=template("%s %s",$1,$2);}
     ;
-
 function_definition:
     KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
-    function_body KEYWORD_RETURN expression KEYWORD_ENDDEF DELIMITER_SEMICOLON
-    { $$ = template("%s %s(%s) {\n%s\n}\n", $7, $2, $4, $9); }
+    function_body 
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
+    | KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
+    function_body KEYWORD_RETURN DELIMITER_SEMICOLON
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
     ;
-
 function_parameters:
     /*empty*/ {$$=template("");}
     | variable_declaration {$$=template("%s",$1);}
     | function_parameters DELIMITER_COMMA variable_declaration {$$=template("%s, %s",$1,$3);}
     ;
-
 function_body:
-    const_declarations_opt var_declarations_opt statements
-    { $$ = template("%s\n%s\n%s", $1, $2, $3); }
+    variable_declaration constant_declaration statements {$$=template("\t%s\n%s\n%s\n",$1,$2,$3);}
+    | variable_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
+    | constant_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
+    | statements {$$=template("\t%s\n",$1);}
     ;
-
-const_declarations_opt:
-    /* Empty rule */ { $$ = ""; }
-    | const_declarations { $$ = $1; }
-    ;
-
-var_declarations_opt:
-    /* Empty rule */ { $$ = ""; }
-    | var_declarations { $$ = $1; }
-    ;
-
 /*6. Complex structures
-
 comp comp_name:
     variables declaration (member variables, they begin with #)
     functions (methods)
@@ -324,13 +275,10 @@ complex_types_declarations:
     complex_type_structure {$$=template("%s",$1);}
     | complex_types_declarations complex_type_structure {$$=template("%s\n%s",$1,$2);}
     ;
-
-
 complex_type_structure:
     KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables func_definitions KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n%s}%s;",$2,$4,$5,$2);}
     | KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n}%s;",$2,$4,$2);}
     ;
-
 /*Similar to variables but they must begin with HASH (#)*/
 member_variables:
     member_variable_declaration {$$=template("%s",$1);}
@@ -351,22 +299,21 @@ member_variable_list:
 
 /*7. Expressions*/
 expression:
-    IDENTIFIER { $$ = template("%s", $1); }
-    | IDENTIFIER DELIMITER_LEFT_BRACKET expression DELIMITER_RIGHT_BRACKET { $$ = template("%s[%s]", $1, $3); }
-    | IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_arguments DELIMITER_RIGHT_PARENTHESIS { $$ = template("%s(%s)", $1, $3); }
-    | KEYWORD_TRUE { $$ = template("1"); }
-    | KEYWORD_FALSE { $$ = template("0"); }
-    | arithmetic_expression { $$ = template("%s", $1); }
-    | logical_expression { $$ = template("%s", $1); }
-    | relational_expression { $$ = template("%s", $1); }
-    | DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS { $$ = template("(%s)", $2); }
+    IDENTIFIER {$$=template("%s",$1);}
+    | KEYWORD_TRUE {$$=template("1");}
+    | KEYWORD_FALSE {$$=template("0");}
+    | DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS {$$=template("(%s)",$2);}
+    | DELIMITER_LEFT_BRACKET expression DELIMITER_RIGHT_BRACKET {$$=template("[%s]",$2);}
+    | arithmetic_expression {$$=$1;}
+    | logical_expression {$$=$1;}
+    | relational_expression {$$=$1;}
     ;
 
 arithmetic_expression:
-    INTEGER_CONSTANT {$$=template("%d",$1);}
-    | FLOATING_POINT_CONSTANT {$$=template("%lf",$1);}
-    | STRING_CONSTANT {$$=template("%s",$1);}
-    | BOOLEAN_CONSTANT {$$=template("%s",$1);}
+    INTEGER_CONSTANT {$$=$1;}
+    | FLOATING_POINT_CONSTANT {$$=$1;}
+    | STRING_CONSTANT {$$=$1;}
+    | BOOLEAN_CONSTANT {$$=$1;}
     | expression ADDITION_OPERATOR expression {$$=template("%s + %s",$1,$3);}
     | expression SUBTRACTION_OPERATOR expression {$$=template("%s - %s",$1,$3);}
     | expression MULTIPLICATION_OPERATOR expression {$$=template("%s * %s",$1,$3);}
@@ -395,21 +342,21 @@ relational_expression:
 
 /*8. Statements*/
 statement:
-    assign_statement
-    | if_statement
-    | for_loop_statement
-    | array_from_integer
-    | array_from_array
-    | while_loop_statement
-    | break_statement
-    | continue_statement
-    | return_statement
-    | function_call_statement
+    assign_statement {$$=template("%s",$1);}
+    | if_statement {$$=template("%s",$1);}
+    | for_loop_statement {$$=template("%s",$1);}
+    | array_from_integer {$$=template("%s",$1);}
+    | array_from_array {$$=template("%s",$1);}
+    | while_loop_statement {$$=template("%s",$1);}
+    | break_statement {$$=template("%s",$1);}
+    | continue_statement {$$=template("%s",$1);}
+    | return_statement {$$=template("%s",$1);}
+    | function_call_statement {$$=template("%s",$1);}
     ;
 
 statements:
-    statement { $$ = $1; }
-    | statements statement { $$ = template("%s %s", $1, $2); }
+    statement {$$=template("%s",$1);}
+    | statements statement {$$=template("%s\n%s",$1,$2);}
     ;
 
 assign_statement:
@@ -429,7 +376,7 @@ if_statement:
 else_statement:
     KEYWORD_ELSE DELIMITER_COLON statements {$$=template("else{\n%s\n}\n",$3);}
     ;
-    
+
 for_loop_statement:
     KEYWORD_FOR IDENTIFIER KEYWORD_IN DELIMITER_LEFT_BRACKET arithmetic_expression DELIMITER_COLON arithmetic_expression DELIMITER_RIGHT_BRACKET DELIMITER_COLON statements KEYWORD_ENDFOR DELIMITER_SEMICOLON 
     {$$=template("for(int %s=%s;%s<=%s && %s>=-%s;%s+=1){\n%s\n}",$2,$5,$2,$7,$2,$7,$2,$10); }
@@ -439,7 +386,7 @@ for_loop_statement:
 
 array_from_integer:
     IDENTIFIER ARRAY_ASSIGN_OPERATOR DELIMITER_LEFT_BRACKET expression KEYWORD_FOR IDENTIFIER DELIMITER_COLON INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type DELIMITER_SEMICOLON
-    {$$=template("%s* %s = (%s*)malloc(%d * sizeof(%s));\nfor(int %s=0; %s<%d; ++%s){\n%s[%s] = %s;\n}\n",$11,$1,$11,$8,$11,$6,$6,$8,$6,$1,$6,$4);}
+    {$$=template("%s* %s = (%s*)malloc(%s * sizeof(%s));\nfor(int %s=0; %s<%s; ++%s){\n%s[%s] = %s;\n}\n",$11,$1,$11,$8,$11,$6,$6,$8,$6,$1,$6,$4);}
     ;
 
 array_from_array:
@@ -462,9 +409,10 @@ continue_statement:
     ;
 
 return_statement:
-    KEYWORD_RETURN expression DELIMITER_SEMICOLON { $$ = template("return %s;\n", $2); }
-    | KEYWORD_RETURN DELIMITER_SEMICOLON { $$ = template("return;\n"); }
+    KEYWORD_RETURN DELIMITER_SEMICOLON{$$=template("return;");}
+    | KEYWORD_RETURN expression DELIMITER_SEMICOLON{$$=template("return %s;",$2);}
     ;
+
 
 
 function_call_statement:
@@ -473,17 +421,15 @@ function_call_statement:
     ;
 
 function_arguments:
-    /* empty */ { $$ = template(""); }
-    | expression { $$ = template("%s", $1); }
-    | function_arguments DELIMITER_COMMA expression { $$ = template("%s, %s", $1, $3); }
+    /*empty*/ {$$="";}
+    | expression {$$=template("%s",$1);}
+    | function_arguments DELIMITER_COMMA expression {$$=template("%s,%s",$1,$3);}
     ;
 
 %%
 int main() {
     if ( yyparse() == 0 )
         printf("Accepted!\n");
-    else{
+    else
         printf("Rejected!\n");
-    }
-    return 0;
 }

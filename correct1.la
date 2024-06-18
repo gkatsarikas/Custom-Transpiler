@@ -1,15 +1,20 @@
 --This is a comment
 
+comp Circle:
+    #x, #y: scalar ;
+    #radius: scalar ;
+    def perimeter(x: integer, y: integer)-> integer : return 6.28*radius; enddef;
+endcomp;
 
 const N = 100: integer;
-l,c: integer;
+
 b: integer;
 a[100]: integer;
 c: scalar;
 alpha: bool;
 
 def cube(i: integer )-> integer:
-    return;
+    return i*i*i;
 enddef;
 
 def main():

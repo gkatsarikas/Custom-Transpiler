@@ -1,0 +1,30 @@
+--Comments
+
+comp Student:
+    #id: str;
+    #name: str;
+    #grade: integer;
+    def getID()->str: return id; enddef;
+endcomp;
+
+const phi = 1.618: scalar;
+
+a,b: scalar;
+c,d: integer;
+s: str;
+flag: bool;
+
+def sum(a: integer,b: integer)->integer:
+    return (a+b);
+enddef;
+
+def main():
+    a = 2.0;
+    b = 3.2;
+    s = "message";
+    c = 2;
+    d = 7;
+
+    sum(c,d);
+    return 0;
+enddef;
