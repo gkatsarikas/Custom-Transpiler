@@ -8,17 +8,18 @@
     extern int yylex();
 
     /*Flag to determine whether a variable is from a comp*/
-    int is_comp_flag = 0;
 
 %}
 
 %union{
     char *str;
+    int int_val;
+    double double_val;
 }
 
 %token <str> IDENTIFIER
 %token <str> INTEGER_CONSTANT 
-%token <str> FLOATING_POINT_CONSTANT 
+%token <double_val> SCALAR_CONSTANT 
 %token <str> STRING_CONSTANT 
 %token <str> BOOLEAN_CONSTANT
 
@@ -137,19 +138,18 @@ program: program_template
     {
     FILE* outputFile = fopen("output.c", "w");
         if (yyerror_count == 0) {
-            // Print the contents of c_prologue to the file
-            fputs(c_prologue, outputFile);
-            fputs("#include <stdio.h>\n",outputFile);
-            fputs("#include <stdlib.h>\n",outputFile);
-            fputs("#include <math.h>\n",outputFile);
+            //Include necessary files for correct syntax
+            fprintf(outputFile,"%s",c_prologue);
+            fprintf(outputFile,"%s","#include <stdio.h>\n");
+            fprintf(outputFile,"%s","#include <stdlib.h>\n");
+            fprintf(outputFile,"%s","#include <math.h>\n\n");
 
-            // Print the value of $1 to the file
             fprintf(outputFile, "%s", $1);
-        } else {
-            // Print the error message and yyerror_count to the file
+        } 
+        else {
             fprintf(outputFile, "Error num: %d", yyerror_count);
         }
-        // Close the output file
+
         fclose(outputFile);
     }
     ;
@@ -181,7 +181,7 @@ program_template:
 
 main_function: 
     KEYWORD_DEF KEYWORD_MAIN DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON function_body KEYWORD_ENDDEF DELIMITER_SEMICOLON
-    {$$=template("int main(){\n\t%s\n}",$6);}
+    {$$=template("int main(){\n\t%s\n};",$6);}
     ;
 
 identifiers:
@@ -195,7 +195,8 @@ Array types: Arrays with elements of a basic type
 Note: Booleans are treated as integers (True is mapped to 0 and False is mapped to 1)
 */
 data_type:
-    basic_type {$$=template("%s",$1);}
+    /*empty*/ {$$=template("");}
+    |basic_type {$$=template("%s",$1);}
     | complex_type {$$=template("%s",$1);}
     | array_type {$$=template("%s",$1);}
     ;
@@ -209,8 +210,8 @@ complex_type:
     KEYWORD_COMP IDENTIFIER {$$=template("struct %s",$2);}
     ;
 array_type:
-DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[%d]",$5,$2);}
-| DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[]",$4);}
+    DELIMITER_LEFT_BRACKET INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[%d]",$5,$2);}
+    | DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type {$$=template("%s[]",$4);}
 ;
 /*3. Variables*/
 var_declarations:
@@ -230,8 +231,8 @@ const_declarations:
     | constant_declaration DELIMITER_SEMICOLON {$$ = template("%s",$1);}
     ;
 constant_declaration:
-    KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR INTEGER_CONSTANT DELIMITER_COLON KEYWORD_INTEGER {$$=template("const int %s = %s;",$2,$4);}
-    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR FLOATING_POINT_CONSTANT DELIMITER_COLON KEYWORD_SCALAR {$$=template("const double %s = %s;",$2,$4);}
+    KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR INTEGER_CONSTANT DELIMITER_COLON KEYWORD_INTEGER {$$=template("const int %s = %d;",$2,$4);}
+    | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR SCALAR_CONSTANT DELIMITER_COLON KEYWORD_SCALAR {$$=template("const double %s = %lf;",$2,$4);}
     | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR STRING_CONSTANT DELIMITER_COLON KEYWORD_STR {$$=template("const char* %s = %s;",$2,$4);}
     | KEYWORD_CONST IDENTIFIER ASSIGN_OPERATOR BOOLEAN_CONSTANT DELIMITER_COLON KEYWORD_BOOL {$$=template("const int %s = %s;",$2,$4);}
     ;
@@ -249,10 +250,12 @@ func_definitions:
 function_definition:
     KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
     function_body 
-    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s){\n%s\n}",$7,$2,$4,$9);}
     | KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS ARROW_OPERATOR data_type DELIMITER_COLON
     function_body KEYWORD_RETURN DELIMITER_SEMICOLON
-    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s)={\n%s\n}",$7,$2,$4,$9);}
+    KEYWORD_ENDDEF DELIMITER_SEMICOLON{$$=template("%s %s(%s){\n%s\n}",$7,$2,$4,$9);}
+    | KEYWORD_DEF IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_parameters DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON 
+    function_body KEYWORD_ENDDEF DELIMITER_SEMICOLON {$$=template("void %s(%s){\n%s\n}\n",$2,$4,$7);}
     ;
 function_parameters:
     /*empty*/ {$$=template("");}
@@ -276,7 +279,7 @@ complex_types_declarations:
     | complex_types_declarations complex_type_structure {$$=template("%s\n%s",$1,$2);}
     ;
 complex_type_structure:
-    KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables func_definitions KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n%s}%s;",$2,$4,$5,$2);}
+    KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables func_definitions KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n}\n%s;\n%s",$2,$4,$2,$5);}
     | KEYWORD_COMP IDENTIFIER DELIMITER_COLON member_variables KEYWORD_ENDCOMP DELIMITER_SEMICOLON {$$=template("typedef struct %s{\n%s\n}%s;",$2,$4,$2);}
     ;
 /*Similar to variables but they must begin with HASH (#)*/
@@ -291,7 +294,7 @@ member_variable_declaration:
 
 member_variable_list:
     member_variable_list DELIMITER_COMMA HASHTAG_ASSIGN_OPERATOR IDENTIFIER  {$$ = template("%s, %s", $1, $4);}
-    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER{$$ = template("%s",$2); is_comp_flag = 1;}
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER{$$ = template("%s",$2);}
     ;
 
 
@@ -300,6 +303,7 @@ member_variable_list:
 /*7. Expressions*/
 expression:
     IDENTIFIER {$$=template("%s",$1);}
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER {$$=template("%s",$2);}
     | KEYWORD_TRUE {$$=template("1");}
     | KEYWORD_FALSE {$$=template("0");}
     | DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS {$$=template("(%s)",$2);}
@@ -310,9 +314,9 @@ expression:
     ;
 
 arithmetic_expression:
-    INTEGER_CONSTANT {$$=$1;}
-    | FLOATING_POINT_CONSTANT {$$=$1;}
-    | STRING_CONSTANT {$$=$1;}
+    INTEGER_CONSTANT {$$=template("%d",$1);}
+    | SCALAR_CONSTANT {$$=template("%lf",$1);}
+    | STRING_CONSTANT {$$=template("%s",$1);}
     | BOOLEAN_CONSTANT {$$=$1;}
     | expression ADDITION_OPERATOR expression {$$=template("%s + %s",$1,$3);}
     | expression SUBTRACTION_OPERATOR expression {$$=template("%s - %s",$1,$3);}
@@ -361,11 +365,20 @@ statements:
 
 assign_statement:
     IDENTIFIER ASSIGN_OPERATOR expression DELIMITER_SEMICOLON {$$=template("%s = %s;\n", $1, $3);}
+    | IDENTIFIER DELIMITER_LEFT_BRACKET IDENTIFIER DELIMITER_RIGHT_BRACKET ASSIGN_OPERATOR expression DELIMITER_SEMICOLON
+    { $$ = template("%s[%s] = %s;\n", $1, $3, $6); }
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER ASSIGN_OPERATOR expression DELIMITER_SEMICOLON {$$=template("%s = %s;\n", $2, $4);}
     | IDENTIFIER ADD_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s += %s;\n", $1, $3); }
     | IDENTIFIER SUBTRACT_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s -= %s;\n", $1, $3); }
     | IDENTIFIER MULTIPLY_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s *= %s;\n", $1, $3); }
     | IDENTIFIER DIVIDE_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s /= %s;\n", $1, $3); }
     | IDENTIFIER MODULO_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s %%= %s;\n", $1, $3); }
+    | IDENTIFIER ARRAY_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON {$$=template("%s := [%s];\n",$1,$3);}
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER ADD_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s += %s;\n", $2, $4); }
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER SUBTRACT_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s -= %s;\n", $2, $4); }
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER MULTIPLY_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s *= %s;\n", $2, $4); }
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER DIVIDE_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s /= %s;\n", $2, $4); }
+    | HASHTAG_ASSIGN_OPERATOR IDENTIFIER MODULO_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s %%= %s;\n", $2, $4); }
     ;
 
 if_statement:
@@ -379,20 +392,21 @@ else_statement:
 
 for_loop_statement:
     KEYWORD_FOR IDENTIFIER KEYWORD_IN DELIMITER_LEFT_BRACKET arithmetic_expression DELIMITER_COLON arithmetic_expression DELIMITER_RIGHT_BRACKET DELIMITER_COLON statements KEYWORD_ENDFOR DELIMITER_SEMICOLON 
-    {$$=template("for(int %s=%s;%s<=%s && %s>=-%s;%s+=1){\n%s\n}",$2,$5,$2,$7,$2,$7,$2,$10); }
+    {$$=template("\nfor(int %s=%s;%s<=%s;%s+=1){\n\t%s\n}",$2,$5,$2,$7,$2,$10); }
     | KEYWORD_FOR IDENTIFIER KEYWORD_IN DELIMITER_LEFT_BRACKET arithmetic_expression DELIMITER_COLON arithmetic_expression DELIMITER_COLON arithmetic_expression DELIMITER_RIGHT_BRACKET DELIMITER_COLON statements KEYWORD_ENDFOR DELIMITER_SEMICOLON 
-    {$$=template("for(int %s=%s;%s<=%s && %s>=-%s;%s+=%s){\n%s\n}",$2,$5,$2,$7,$2,$7,$2,$9,$12); }  
+    {$$=template("\nfor(int %s=%s;%s<=%s && %s>=-%s;%s+=%s){\n\t%s\n}",$2,$5,$2,$7,$2,$7,$2,$9,$12); }  
     ;
 
 array_from_integer:
-    IDENTIFIER ARRAY_ASSIGN_OPERATOR DELIMITER_LEFT_BRACKET expression KEYWORD_FOR IDENTIFIER DELIMITER_COLON INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type DELIMITER_SEMICOLON
-    {$$=template("%s* %s = (%s*)malloc(%s * sizeof(%s));\nfor(int %s=0; %s<%s; ++%s){\n%s[%s] = %s;\n}\n",$11,$1,$11,$8,$11,$6,$6,$8,$6,$1,$6,$4);}
+    IDENTIFIER ARRAY_ASSIGN_OPERATOR DELIMITER_LEFT_BRACKET expression KEYWORD_FOR IDENTIFIER DELIMITER_COLON INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET
+    DELIMITER_COLON data_type DELIMITER_SEMICOLON
+    {$$ = template("\n%s* %s = (%s*)malloc(%d*sizeof(%s));\nfor(int %s = 0; %s < %d; ++%s) {\n\t%s[%s] = %s;\n}", $11, $1, $11, $8,$11, $6, $6, $8, $6, $1, $6, $4);}
     ;
 
 array_from_array:
     IDENTIFIER ARRAY_ASSIGN_OPERATOR DELIMITER_LEFT_BRACKET expression KEYWORD_FOR IDENTIFIER DELIMITER_COLON data_type KEYWORD_IN
-    data_type KEYWORD_OF INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type DELIMITER_SEMICOLON
-    {$$=template("%s* %s = (%s*)malloc(%s*sizeof(%s));\n\nfor(int a_i=0; a_i<%s; ++a_i){\n%s[%s]=%s;}",$15,$1,$15,$12,$15,$12,$1,$4);}
+    IDENTIFIER KEYWORD_OF INTEGER_CONSTANT DELIMITER_RIGHT_BRACKET DELIMITER_COLON data_type DELIMITER_SEMICOLON
+    {$$=template("%s* %s = (%s*)malloc(%d*sizeof(%s));\n\nfor(int a_i=0; a_i<%d; ++a_i){\n%s[a_i]=%s;}",$15,$1,$15,$12,$15,$12,$4);}
     ;
 
 while_loop_statement:

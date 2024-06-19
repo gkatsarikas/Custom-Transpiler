@@ -95,8 +95,8 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 "->"            {printf("token ARROW_OPERATOR: %s\n",yytext); operator_flag=1; return ARROW_OPERATOR;}
 
 {IDENTIFIER}    {yylval.str=strdup(yytext); printf("token IDENTIFIER: %s\n", yytext); operator_flag = 0; return IDENTIFIER;}
-{CONST_INT}     {yylval.str=strdup(yytext); printf("token INTEGER_CONSTANT: %s\n",yytext); operator_flag = 0; return INTEGER_CONSTANT;};
-{FLOATING_POINT_CONSTANT}   {yylval.str=strdup(yytext); printf("token SCALAR_CONSTANT: %s\n",yytext); operator_flag=0; return FLOATING_POINT_CONSTANT;};
+{CONST_INT}     {yylval.int_val = atoi(strdup(yytext)); printf("token INTEGER_CONSTANT: %s\n",yytext); operator_flag = 0; return INTEGER_CONSTANT;};
+{FLOATING_POINT_CONSTANT}   {yylval.double_val =atof(strdup(yytext)); printf("token SCALAR_CONSTANT: %s\n",yytext); operator_flag=0; return SCALAR_CONSTANT;};
 {CONSTANT_STRINGS} {yylval.str=strdup(yytext); printf("token STRING_CONSTANT: %s\n", yytext); operator_flag=0; return STRING_CONSTANT;}
 
 

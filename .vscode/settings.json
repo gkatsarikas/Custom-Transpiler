@@ -1,5 +1,6 @@
 {
     "files.associations": {
-        "lambdalib.h": "c"
+        "lambdalib.h": "c",
+        "math.h": "c"
     }
 }
