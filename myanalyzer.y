@@ -75,6 +75,8 @@
 %token DELIMITER_LEFT_PARENTHESIS
 %token DELIMITER_COMMA
 
+
+
 %left DELIMITER_DOT DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS
 %right POWER_OPERATOR
 %right SIGN_OPERATOR_PLUS SIGN_OPERATOR_MINUS
@@ -85,6 +87,11 @@
 %left KEYWORD_AND KEYWORD_OR
 %right ASSIGN_OPERATOR ADD_ASSIGN_OPERATOR SUBTRACT_ASSIGN_OPERATOR MULTIPLY_ASSIGN_OPERATOR DIVIDE_ASSIGN_OPERATOR MODULO_ASSIGN_OPERATOR ARRAY_ASSIGN_OPERATOR
 %right HASHTAG_ASSIGN_OPERATOR
+
+%nonassoc KEYWORD_ELSE
+
+%start program
+
 
 %type <str> program
 %type <str> program_template
@@ -120,7 +127,6 @@
 %type <str> statement
 %type <str> assign_statement
 %type <str> if_statement
-%type <str> else_statement
 %type <str> for_loop_statement
 %type <str> array_from_integer
 %type <str> array_from_array
@@ -130,8 +136,9 @@
 %type <str> return_statement
 %type <str> function_call_statement
 %type <str> function_arguments
+%type <str> empty_statement
 
-%start program
+
 
 %%
 program: program_template
@@ -140,9 +147,6 @@ program: program_template
         if (yyerror_count == 0) {
             //Include necessary files for correct syntax
             fprintf(outputFile,"%s",c_prologue);
-            fprintf(outputFile,"%s","#include <stdio.h>\n");
-            fprintf(outputFile,"%s","#include <stdlib.h>\n");
-            fprintf(outputFile,"%s","#include <math.h>\n\n");
 
             fprintf(outputFile, "%s", $1);
         } 
@@ -195,8 +199,7 @@ Array types: Arrays with elements of a basic type
 Note: Booleans are treated as integers (True is mapped to 0 and False is mapped to 1)
 */
 data_type:
-    /*empty*/ {$$=template("");}
-    |basic_type {$$=template("%s",$1);}
+    basic_type {$$=template("%s",$1);}
     | complex_type {$$=template("%s",$1);}
     | array_type {$$=template("%s",$1);}
     ;
@@ -258,14 +261,14 @@ function_definition:
     function_body KEYWORD_ENDDEF DELIMITER_SEMICOLON {$$=template("void %s(%s){\n%s\n}\n",$2,$4,$7);}
     ;
 function_parameters:
-    /*empty*/ {$$=template("");}
+    %empty {$$=template("");}
     | variable_declaration {$$=template("%s",$1);}
     | function_parameters DELIMITER_COMMA variable_declaration {$$=template("%s, %s",$1,$3);}
     ;
 function_body:
-    variable_declaration constant_declaration statements {$$=template("\t%s\n%s\n%s\n",$1,$2,$3);}
-    | variable_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
-    | constant_declaration statements {$$=template("\t%s\n%s\n",$1,$2);}
+    var_declarations constant_declaration statements {$$=template("%s\n%s\n%s\n",$1,$2,$3);}
+    | var_declarations statements {$$=template("\t%s\n%s\n",$1,$2);}
+    | const_declarations statements {$$=template("\t%s\n%s\n",$1,$2);}
     | statements {$$=template("\t%s\n",$1);}
     ;
 /*6. Complex structures
@@ -308,9 +311,10 @@ expression:
     | KEYWORD_FALSE {$$=template("0");}
     | DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS {$$=template("(%s)",$2);}
     | DELIMITER_LEFT_BRACKET expression DELIMITER_RIGHT_BRACKET {$$=template("[%s]",$2);}
-    | arithmetic_expression {$$=$1;}
-    | logical_expression {$$=$1;}
-    | relational_expression {$$=$1;}
+    | arithmetic_expression {$$=template("%s",$1);}
+    | logical_expression {$$=template("%s",$1);}
+    | relational_expression {$$=template("%s",$1);}
+    | IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_arguments DELIMITER_RIGHT_PARENTHESIS {$$=template("%s(%s)",$1,$3);}
     ;
 
 arithmetic_expression:
@@ -318,14 +322,14 @@ arithmetic_expression:
     | SCALAR_CONSTANT {$$=template("%lf",$1);}
     | STRING_CONSTANT {$$=template("%s",$1);}
     | BOOLEAN_CONSTANT {$$=$1;}
-    | expression ADDITION_OPERATOR expression {$$=template("%s + %s",$1,$3);}
-    | expression SUBTRACTION_OPERATOR expression {$$=template("%s - %s",$1,$3);}
+    | expression ADDITION_OPERATOR expression {$$=template("%s + %s",$1,$3);} %prec ADDITION_OPERATOR
+    | expression SUBTRACTION_OPERATOR expression {$$=template("%s - %s",$1,$3);} %prec SUBTRACTION_OPERATOR
     | expression MULTIPLICATION_OPERATOR expression {$$=template("%s * %s",$1,$3);}
     | expression DIVISION_OPERATOR expression {$$=template("%s / %s",$1,$3);}
     | expression MODULO_OPERATOR expression {$$=template("%s %% %s",$1,$3);}
-    | expression POWER_OPERATOR expression {$$=template("pow((double)%s,(double)%s)",$1,$3);}
-    | SIGN_OPERATOR_PLUS expression {$$=template("+%s",$2);}
-    | SIGN_OPERATOR_MINUS expression {$$=template("-%s",$2);}
+    | expression POWER_OPERATOR expression {$$=template("pow(%s,%s)",$1,$3);}
+    | SIGN_OPERATOR_PLUS expression {$$=template("+%s",$2);} %prec SIGN_OPERATOR_PLUS
+    | SIGN_OPERATOR_MINUS expression {$$=template("-%s",$2);} %prec SIGN_OPERATOR_MINUS
     ;
 
 
@@ -356,17 +360,23 @@ statement:
     | continue_statement {$$=template("%s",$1);}
     | return_statement {$$=template("%s",$1);}
     | function_call_statement {$$=template("%s",$1);}
+    | empty_statement {$$=template("%s",$1);}
     ;
 
 statements:
     statement {$$=template("%s",$1);}
-    | statements statement {$$=template("%s\n%s",$1,$2);}
+    | statement statements {$$=template("%s\n%s",$1,$2);}
     ;
+
+empty_statement:
+    DELIMITER_SEMICOLON {$$=template(";");}
+    ;
+
+    
 
 assign_statement:
     IDENTIFIER ASSIGN_OPERATOR expression DELIMITER_SEMICOLON {$$=template("%s = %s;\n", $1, $3);}
-    | IDENTIFIER DELIMITER_LEFT_BRACKET IDENTIFIER DELIMITER_RIGHT_BRACKET ASSIGN_OPERATOR expression DELIMITER_SEMICOLON
-    { $$ = template("%s[%s] = %s;\n", $1, $3, $6); }
+    | IDENTIFIER DELIMITER_LEFT_BRACKET IDENTIFIER DELIMITER_RIGHT_BRACKET ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s[%s] = %s;\n", $1, $3, $6); }
     | HASHTAG_ASSIGN_OPERATOR IDENTIFIER ASSIGN_OPERATOR expression DELIMITER_SEMICOLON {$$=template("%s = %s;\n", $2, $4);}
     | IDENTIFIER ADD_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s += %s;\n", $1, $3); }
     | IDENTIFIER SUBTRACT_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s -= %s;\n", $1, $3); }
@@ -379,15 +389,12 @@ assign_statement:
     | HASHTAG_ASSIGN_OPERATOR IDENTIFIER MULTIPLY_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s *= %s;\n", $2, $4); }
     | HASHTAG_ASSIGN_OPERATOR IDENTIFIER DIVIDE_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s /= %s;\n", $2, $4); }
     | HASHTAG_ASSIGN_OPERATOR IDENTIFIER MODULO_ASSIGN_OPERATOR expression DELIMITER_SEMICOLON { $$ = template("%s %%= %s;\n", $2, $4); }
+    | IDENTIFIER ASSIGN_OPERATOR function_call_statement DELIMITER_SEMICOLON {$$ = template("%s = %s;", $1, $3);}
     ;
 
 if_statement:
     KEYWORD_IF DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements KEYWORD_ENDIF DELIMITER_SEMICOLON {$$=template("if(%s){\n%s\n}\n",$3,$6);}
-    | KEYWORD_IF DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements else_statement KEYWORD_ENDIF DELIMITER_SEMICOLON {$$=template("if(%s){\n%s\n}\n%s",$3,$6,$7);}
-    ;
-
-else_statement:
-    KEYWORD_ELSE DELIMITER_COLON statements {$$=template("else{\n%s\n}\n",$3);}
+    | KEYWORD_IF DELIMITER_LEFT_PARENTHESIS expression DELIMITER_RIGHT_PARENTHESIS DELIMITER_COLON statements KEYWORD_ELSE DELIMITER_COLON statements KEYWORD_ENDIF DELIMITER_SEMICOLON {$$=template("if(%s){\n%s\n}\nelse{\n%s\n}",$3,$6,$9);}
     ;
 
 for_loop_statement:
@@ -423,19 +430,19 @@ continue_statement:
     ;
 
 return_statement:
-    KEYWORD_RETURN DELIMITER_SEMICOLON{$$=template("return;");}
-    | KEYWORD_RETURN expression DELIMITER_SEMICOLON{$$=template("return %s;",$2);}
+    KEYWORD_RETURN DELIMITER_SEMICOLON    { $$ = template("return;"); }
+    | KEYWORD_RETURN expression DELIMITER_SEMICOLON    { $$ = template("return %s;", $2); }
     ;
 
 
 
 function_call_statement:
-    IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_arguments DELIMITER_RIGHT_PARENTHESIS DELIMITER_SEMICOLON 
-    {$$=template("%s(%s);",$1,$3);}
+    IDENTIFIER DELIMITER_LEFT_PARENTHESIS function_arguments DELIMITER_RIGHT_PARENTHESIS 
+    {$$=template("%s(%s)",$1,$3);}
     ;
 
 function_arguments:
-    /*empty*/ {$$="";}
+    %empty {$$=template("");}
     | expression {$$=template("%s",$1);}
     | function_arguments DELIMITER_COMMA expression {$$=template("%s,%s",$1,$3);}
     ;

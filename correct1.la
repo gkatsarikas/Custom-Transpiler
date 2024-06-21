@@ -1,30 +1,42 @@
 --This is a comment
 
-comp Circle:
-    #x, #y: scalar ;
-    #radius: scalar ;
-    def move(dx: scalar, dy: scalar): #x=#x+dx; #y=#y+dx; enddef;
+comp Student:
+    #name,#id: str;
+    #grade: integer;
+
+    def updateGrade(grade: integer): if(grade > 5 and grade < 8):#grade = grade;  endif; enddef;
 endcomp;
 
-const N = 100: integer;
+const a = 3.14: scalar;
+const b = 2.71: scalar;
 
-b: integer;
-c: scalar;
-alpha: bool;
+const amount = 10: integer;
 
-def cube(i: integer )-> integer:
-    return i*i*i;
+f,g,h: integer;
+
+grades[10]: integer;
+
+
+def printMessage(message: str):
+    writeStr(message);
 enddef;
 
-def main():
-    for b in [0:10]:
-        b = 6;
-    endfor;
-    b = 11;
-    b += 23;
-    c = 2.2 + (0.21*4);
 
-    alpha = True;
+def main():
+    -- Initialize grades array
+    grades := [0 for i: 10]: scalar;
+
+    if(a > b):
+        writeStr("a is greater than b\n");
+    else:
+        writeStr("b is greater than a\n");
+    endif;
+
+    for grade in [0:amount-1]:
+        grades[grade] = grade + 2;
+    endfor;
+
+    writeStr("Test message.");
 
     return 0;
 enddef;

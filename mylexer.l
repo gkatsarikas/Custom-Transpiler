@@ -10,6 +10,54 @@
 
     int line_num = 1;
     int operator_flag = 1;  /*Flag used to find whether the + and - operators are sign or addition/subtraction operators*/    
+
+    /*Implementation of macro definition using a linked list*/
+    typedef struct Macro{
+        char* identifier;
+        char* string;
+        struct Macro* next;
+    }Macro;
+
+    Macro* macros = NULL;
+
+
+    void insert(char *identifier, char *string) {
+        Macro *m = (Macro *)malloc(sizeof(Macro));
+        if (!m) {
+            fprintf(stderr, "Memory allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+
+        m->identifier = strdup(identifier);
+        m->string = strdup(string);
+        if (!m->identifier || !m->string) {
+            fprintf(stderr, "Memory allocation error\n");
+            exit(EXIT_FAILURE);
+        }
+
+        m->next = macros;
+        macros = m;
+    }
+
+
+    const char *get_macro_replacement(const char *identifier) {
+        for (Macro *macro = macros; macro != NULL; macro = macro->next) {
+            if (strcmp(macro->identifier, identifier) == 0) {
+                return macro->string;
+            }
+        }
+        return NULL;
+    }
+
+    char *find_macro_value(const char *identifier) {
+        for (Macro *macro = macros; macro != NULL; macro = macro->next) {
+            if (strcmp(macro->identifier, identifier) == 0) {
+                return macro->string;
+            }
+        }
+        return NULL;
+    }
+
 %}
 
 DIGIT [0-9]
@@ -21,13 +69,14 @@ FLOATING_POINT_CONSTANT ({DIGIT}+\.[0-9]+|{DIGIT}+\.?|{DIGIT}+(?:\.{DIGIT}*)?(?:
 BOOLEAN_CONSTANT True|False
 CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 
-%x              line_comment
+%x              line_comment  
 
 
 %%
 
 \n              {++line_num; operator_flag=1;}
 [ \r\t]+        {/*Eat whitespace*/}
+
 
 
 
@@ -94,17 +143,26 @@ CONSTANT_STRINGS \"(\\(n|t|r|\\|\")|[^\"\n]*)\"
 
 "->"            {printf("token ARROW_OPERATOR: %s\n",yytext); operator_flag=1; return ARROW_OPERATOR;}
 
-{IDENTIFIER}    {yylval.str=strdup(yytext); printf("token IDENTIFIER: %s\n", yytext); operator_flag = 0; return IDENTIFIER;}
+{IDENTIFIER}    {
+                        yylval.str = strdup(yytext);
+                        printf("token IDENTIFIER: %s\n", yytext);
+                        operator_flag = 0;
+                        return IDENTIFIER;
+                }
+
 {CONST_INT}     {yylval.int_val = atoi(strdup(yytext)); printf("token INTEGER_CONSTANT: %s\n",yytext); operator_flag = 0; return INTEGER_CONSTANT;};
 {FLOATING_POINT_CONSTANT}   {yylval.double_val =atof(strdup(yytext)); printf("token SCALAR_CONSTANT: %s\n",yytext); operator_flag=0; return SCALAR_CONSTANT;};
 {CONSTANT_STRINGS} {yylval.str=strdup(yytext); printf("token STRING_CONSTANT: %s\n", yytext); operator_flag=0; return STRING_CONSTANT;}
-
-
 
 
 "--"                    {BEGIN(line_comment);};
 <line_comment>[^\n]*    /*Eat line comments*/
 <line_comment>\n        {++line_num;BEGIN(INITIAL);}
 
+
+
 .                       {printf("Unrecognized token %s in line %d",yytext,line_num); exit(EXIT_FAILURE);};
 %%
+
+
+

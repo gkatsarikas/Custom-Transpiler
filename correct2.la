@@ -1,13 +1,30 @@
-const N = 100: integer;
-k: scalar;
-a[100]: integer;
+--Fibonacci numbers in Lambda
+
+const values = 10: integer;
+
+
+num1,num2,counter: integer;
+
+next: integer;
 
 def main():
-    for i in [0:N-1]:
-        a[i] = 1;
-        k *= 2.3;
-    endfor;
+    writeStr("First 10 Fibonacci numbers: \n");
 
-    b := [l for l:100]:integer;
+    -- F(0) = 0 and F(1) = 1 are the first two Fibonacci numbers
+    num1 = 0;
+    num2 = 1;
+    next = num1 + num2;
 
+    counter = 0;
+
+    while(counter<values):
+        writeInteger(next);
+        writeStr("\n");
+        num1 = num2;
+        num2 = next;
+        next = num1 + num2;
+        counter += 1;
+    endwhile;
+
+    return 0;
 enddef;
