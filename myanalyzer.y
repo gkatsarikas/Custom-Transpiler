@@ -79,8 +79,7 @@
 
 %left DELIMITER_DOT DELIMITER_LEFT_BRACKET DELIMITER_RIGHT_BRACKET DELIMITER_LEFT_PARENTHESIS DELIMITER_RIGHT_PARENTHESIS
 %right POWER_OPERATOR
-%right SIGN_OPERATOR_PLUS SIGN_OPERATOR_MINUS
-%left ADDITION_OPERATOR SUBTRACTION_OPERATOR MULTIPLICATION_OPERATOR DIVISION_OPERATOR MODULO_OPERATOR 
+%left OPERATOR_PLUS OPERATOR_MINUS MULTIPLICATION_OPERATOR DIVISION_OPERATOR MODULO_OPERATOR 
 %left LESS_THAN_OPERATOR LESS_EQUAL_OPERATOR GREATER_THAN_OPERATOR GREATER_EQUAL_OPERATOR
 %left IS_EQUAL_OPERATOR IS_NOT_EQUAL_OPERATOR
 %right KEYWORD_NOT
@@ -322,14 +321,14 @@ arithmetic_expression:
     | SCALAR_CONSTANT {$$=template("%lf",$1);}
     | STRING_CONSTANT {$$=template("%s",$1);}
     | BOOLEAN_CONSTANT {$$=$1;}
-    | expression ADDITION_OPERATOR expression {$$=template("%s + %s",$1,$3);} %prec ADDITION_OPERATOR
-    | expression SUBTRACTION_OPERATOR expression {$$=template("%s - %s",$1,$3);} %prec SUBTRACTION_OPERATOR
+    | expression OPERATOR_PLUS expression {$$=template("%s + %s",$1,$3);}
+    | expression OPERATOR_MINUS expression {$$=template("%s - %s",$1,$3);} 
     | expression MULTIPLICATION_OPERATOR expression {$$=template("%s * %s",$1,$3);}
     | expression DIVISION_OPERATOR expression {$$=template("%s / %s",$1,$3);}
     | expression MODULO_OPERATOR expression {$$=template("%s %% %s",$1,$3);}
     | expression POWER_OPERATOR expression {$$=template("pow(%s,%s)",$1,$3);}
-    | SIGN_OPERATOR_PLUS expression {$$=template("+%s",$2);} %prec SIGN_OPERATOR_PLUS
-    | SIGN_OPERATOR_MINUS expression {$$=template("-%s",$2);} %prec SIGN_OPERATOR_MINUS
+    | OPERATOR_PLUS expression {$$=template("+%s",$2);} 
+    | OPERATOR_MINUS expression {$$=template("-%s",$2);} 
     ;
 
 
